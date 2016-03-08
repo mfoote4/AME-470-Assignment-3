@@ -2,14 +2,39 @@
 <html>
 <head>
   <title> Simple JS Eval</title>
-  <script src='script.js'> </script>
-  <script src='jquery-2.2.1.min.js'> </script>
-  <script src='ply.js'> </script>
-  <script src=''>
+  <script type="text/javascript" src='script.js'> </script>
+  <script type="text/javascript" src='jquery-2.2.1.min.js'> </script>
+  <script type="text/javascript" src='ply.js'> </script>
+  <script type="text/javascript" src='offline.js'></script>
+  <script type="text/javascript" src='jquery.browser.min.js'></script>
   <link rel="stylesheet" type="text/css" href="ply.css">
+  <link rel="stylesheet" type="text/css" href="offline-theme-slide-indicator.css">
+  <link rel="stylesheet" type="text/css" href="offline-language-english.css">
+  <link rel="stylesheet" type="text/css" href="styles.css">
+  <script src="offline-simulate-ui.min.js"></script>
   <script>
   
   var userData = "";
+
+  $(function(){
+
+         var 
+             $online = $('.online'),
+             $offline = $('.offline');
+
+         Offline.on('confirmed-down', function () {
+             $online.fadeOut(function () {
+                 $offline.fadeIn();
+             });
+         });
+
+         Offline.on('confirmed-up', function () {
+             $offline.fadeOut(function () {
+                 $online.fadeIn();
+             });
+         });
+
+     });
 
 var showLoginModal = function()
 {
@@ -41,6 +66,7 @@ var showLoginModal = function()
   Ply.dialog('login').done(function (ui) {
     Ply.dialog('alert', 'Bingo!');
 	loadMySubs();
+	alert($.browser.name); 
   });
 }
 
