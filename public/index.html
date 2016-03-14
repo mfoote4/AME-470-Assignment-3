@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title> Simple JS Eval</title>
+  <title>RSSFeed Reader</title>
   <script type="text/javascript" src='script.js'> </script>
   <script type="text/javascript" src='jquery-2.2.1.min.js'> </script>
   <script type="text/javascript" src='ply.js'> </script>
-  <script type="text/javascript" src='offline.js'></script>
+  <script type="text/javascript" src='offline.min.js'></script>
   <script type="text/javascript" src='jquery.browser.min.js'></script>
+  <script type="text/javascript" src='moment.js'></script>
+  <script type="text/javascript" src='jquery.reject.js'></script>
   <link rel="stylesheet" type="text/css" href="ply.css">
-  <link rel="stylesheet" type="text/css" href="offline-theme-slide-indicator.css">
-  <link rel="stylesheet" type="text/css" href="offline-theme-slide.css">
+  <link rel="stylesheet" type="text/css" href="offline-theme-chrome.css">
   <link rel="stylesheet" type="text/css" href="offline-language-english.css">
   <link rel="stylesheet" type="text/css" href="styles.css">
-  <script src="simulate-ui.js"></script>
+  <link rel="stylesheet" type="text/css" href="jquery.reject.css">
+  <script src="offline-simulate-ui.min.js"></script>
   <script>
   
   var userData = "";
@@ -38,6 +40,10 @@
      });
  }
 
+ var createUser = function(){
+ 	
+ }
+
 var showLoginModal = function()
 {
     Ply.factory('login', function (options, data, resolve) {
@@ -57,7 +63,7 @@ var showLoginModal = function()
     Ply.factory.use('base', options, {
       title: 'Login',
       form: {
-        email: 'E-mail',
+        email: 'Username',
         password: { hint: 'Password', type: 'password' }
       },
       ok: 'Enter',
@@ -68,8 +74,8 @@ var showLoginModal = function()
   Ply.dialog('login').done(function (ui) {
     Ply.dialog('alert', 'Bingo!');
 	loadMySubs();
-	alert($.browser.name); 
   });
+  
 }
 
 var allSubs = null;
@@ -80,7 +86,7 @@ var aSubSelected = function(index){
   var list = document.getElementById("myFeedList").getElementsByClassName("listItem")
   for(var i = 0; i < list.length; i++){
     if(i == index){
-      list[i].style.color = "red";
+      list[i].style.color = "#77b55a";
       list[i].style.backgroundColor= "white";
     }
     else{
@@ -93,7 +99,7 @@ var aSubSelected = function(index){
   loadURL(url, function(data){
     var title = JSON.parse(data).feed.title.label;
     postObjList = JSON.parse(data).feed.entry;
-    var markUp = "<h1>" + title + "</h1>";
+    var markUp = "<h1 style='text-shadow:1px 1px 1px rgba(0,0,0,1); font-weight:normal; color:#FFFFFF; font-size:36px; font-family:verdana, sans-serif;'>" + title + "</h1>";
     for (var i = 0; i < postObjList.length; i++){
         var aPost = postObjList[i];
         markUp += "<a href='javascript:aPostSelected(" + i + ")' class='listItem'>" + aPost.title.label +" </a>";
@@ -106,7 +112,7 @@ var aPostSelected = function(index){
   var list = document.getElementById("currFeedWrapper").getElementsByClassName("listItem")
   for(var i = 0; i < list.length; i++){
     if(i == index){
-      list[i].style.color = "red";
+      list[i].style.color = "#77b55a";
       list[i].style.backgroundColor= "white";
     }
     else{
@@ -116,20 +122,29 @@ var aPostSelected = function(index){
   }
   var postObj = postObjList[index]
   var markUp = "";
-  markUp += "<h1>" + postObj.title.label + "</h1>";
-  markUp += "<h2>" + postObj["im:artist"].label + "</h1>";
-  markUp += "<img src='" + postObj["im:image"][0].label + "'>"
+  markUp += "<h1 style='text-shadow:1px 1px 1px rgba(0,0,0,1); font-weight:normal; color:#FFFFFF; font-size:36px; font-family:verdana, sans-serif;'>" + postObj.title.label + "</h1>";
+  markUp += "<h2 style='text-shadow:1px 1px 1px rgba(0,0,0,1); font-weight:normal; color:#FFFFFF; font-family:verdana, sans-serif;'>" + postObj["im:artist"].label + "</h1>";
+  markUp += "<img src='" + postObj["im:image"][0].label + "'></br></br>"
   var price = postObj["im:price"].label;
   if(price.toLowerCase() === "get") price = "$0.00";
-  markUp += "<i>" + price  + "</i>";
+  markUp += "<i style='color:#FFFFFF; font-family:verdana, sans-serif;'>" + price  + "</i>";
 
   document.getElementById("selFeedWrapper").innerHTML = markUp;
 }
 
+var reject = function()
+{
+   $.reject({  
+     reject: { 
+		 //chrome: true
+        }  
+    });
+}
 
 var startUp = function(){
   showLoginModal();
   connect();
+  reject();
 }
 
 var addFeed = function()
@@ -138,8 +153,8 @@ var addFeed = function()
   if(link == null) return;
   var url = "./addOrEditSub?user=" + userData.email;
   url += "&link=" + encodeURIComponent(link);
-  url += "&date=" + new Date().getTime();
-  url += "&id=" + userData.email + new Date().getTime();
+  url += "&date=" + moment().format('lll');
+  url += "&id=" + userData.email + " " + moment().format('lll');
   loadURL(url, function(data){
     loadMySubs();
   });
@@ -165,6 +180,12 @@ var loadMySubs = function()
   });
 
 }
+
+var logOut = function()
+{
+	userData.email = null;
+	showLoginModal();
+}
   </script>
   <style>
   p{
@@ -172,6 +193,7 @@ var loadMySubs = function()
   }
   body{
     margin: 0px;
+	background-color: #454040;
   }
   #myFeedWrapper, #currFeedWrapper{
     display: inline-block;
@@ -195,14 +217,63 @@ var loadMySubs = function()
     white-space: word-wrap;
     overflow: hidden;
     text-overflow: ellipsis;
+	color: #000000;
+	font-family:verdana, sans-serif;
+  }
+  #logoutButton{
+	 position: absolute;
+	 bottom: 5%;
+	 right:50%;
+	 
+  }
+  .myButton {
+  	-moz-box-shadow: 0px 6px 14px -7px #3e7327;
+  	-webkit-box-shadow: 0px 6px 14px -7px #3e7327;
+  	box-shadow: 0px 6px 14px -7px #3e7327;
+  	background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #77b55a), color-stop(1, #72b352));
+  	background:-moz-linear-gradient(top, #77b55a 5%, #72b352 100%);
+  	background:-webkit-linear-gradient(top, #77b55a 5%, #72b352 100%);
+  	background:-o-linear-gradient(top, #77b55a 5%, #72b352 100%);
+  	background:-ms-linear-gradient(top, #77b55a 5%, #72b352 100%);
+  	background:linear-gradient(to bottom, #77b55a 5%, #72b352 100%);
+  	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#77b55a', endColorstr='#72b352',GradientType=0);
+  	background-color:#77b55a;
+  	-moz-border-radius:4px;
+  	-webkit-border-radius:4px;
+  	border-radius:4px;
+  	border:1px solid #4b8f29;
+  	display:inline-block;
+  	cursor:pointer;
+  	color:#ffffff;
+  	font-family:Verdana;
+  	font-size:15px;
+  	font-weight:bold;
+  	padding:6px 12px;
+  	text-decoration:none;
+  	text-shadow:0px 1px 0px #5b8a3c;
+  }
+  .myButton:hover {
+  	background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #72b352), color-stop(1, #77b55a));
+  	background:-moz-linear-gradient(top, #72b352 5%, #77b55a 100%);
+  	background:-webkit-linear-gradient(top, #72b352 5%, #77b55a 100%);
+  	background:-o-linear-gradient(top, #72b352 5%, #77b55a 100%);
+  	background:-ms-linear-gradient(top, #72b352 5%, #77b55a 100%);
+  	background:linear-gradient(to bottom, #72b352 5%, #77b55a 100%);
+  	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#72b352', endColorstr='#77b55a',GradientType=0);
+  	background-color:#72b352;
+  }
+  .myButton:active {
+  	position:relative;
+  	top:1px;
   }
   </style>
 </head>
 
 <body onload='startUp()'> 
   <div id='myFeedWrapper'>
-    <h1> My Feeds </h1>
-    <a href='javascript:addFeed()' style='text-decoration: none;padding: 5px; background: white; color: black; border-radius: 5px; border 1px solid black;margin:10px; box-shadow: 0px 0px 2px;'> Add New </a>
+    <h1 style="text-shadow:1px 1px 1px rgba(0,0,0,1); font-weight:normal; color:#FFFFFF; font-size:36px; font-family:verdana, sans-serif;"> My Feeds </h1>
+    <a href='javascript:addFeed()' class="myButton">Add New</a>
+	<a href='javascript:logOut()' id='logoutButton' class="myButton">Log Out</a>
     <div id='myFeedList'> </div>
   </div>
   <div id='currFeedWrapper'>
