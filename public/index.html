@@ -2,82 +2,141 @@
 <html>
 <head>
   <title>RSSFeed Reader</title>
-  <script type="text/javascript" src='script.js'> </script>
-  <script type="text/javascript" src='jquery-2.2.1.min.js'> </script>
-  <script type="text/javascript" src='ply.js'> </script>
-  <script type="text/javascript" src='offline.min.js'></script>
-  <script type="text/javascript" src='jquery.browser.min.js'></script>
-  <script type="text/javascript" src='moment.js'></script>
-  <script type="text/javascript" src='jquery.reject.js'></script>
-  <link rel="stylesheet" type="text/css" href="ply.css">
-  <link rel="stylesheet" type="text/css" href="offline-theme-chrome.css">
-  <link rel="stylesheet" type="text/css" href="offline-language-english.css">
-  <link rel="stylesheet" type="text/css" href="styles.css">
-  <link rel="stylesheet" type="text/css" href="jquery.reject.css">
-  <script src="offline-simulate-ui.min.js"></script>
+    <script src="scripts/jquery-2.2.1.min.js"></script>
+    <script src="scripts/jquery.reject.js"></script>
+    <script src="scripts/Ply.js"></script>
+    <script src="scripts/offline.min.js"></script>
+    <script src="scripts/moment.js"></script>
+    <script src="scripts/moment-with-locales.js"></script>
+    <script src="scripts/script.js"></script>
+    <script src='scripts/uaSpoofing.js'> </script>
+  	<link rel="stylesheet" href="css/ply.css" type="text/css" />
+  	<link rel="stylesheet" href="css/jquery.reject.css" type="text/css" />
+  	<link rel="stylesheet" href="css/offline-theme-default.css" type="text/css" />
+  	<link rel="stylesheet" href="css/offline-language-english.css" type="text/css" />
   <script>
   
+	var AI = {
+	  show: function(){
+	    var mu = "<div class='acInd fadeBox'>"+
+	      '<div class="theSpinner"> </div>' +
+	      "</div>";
+	    document.body.innerHTML += mu;
+	  },
+	  hide:function(){
+	    $(".acInd").remove();
+	  }
+	}
+  
   var userData = "";
-
   var connect = function(){
 	   $(function(){
          var 
              $online = $('.online'),
              $offline = $('.offline');
-
          Offline.on('confirmed-down', function () {
              $online.fadeOut(function () {
                  $offline.fadeIn();
              });
          });
-
          Offline.on('confirmed-up', function () {
              $offline.fadeOut(function () {
                  $online.fadeIn();
              });
          });
-
      });
  }
 
- var createUser = function(){
- 	
+ var showLoginModal = function()
+ {
+    Ply.dialog("prompt", {
+       title: "Login",
+       form: {
+         email: "Email",
+         password: {hint: "Password", type: "password"}
+       }
+   })
+     .then((ui) => {
+     var data = ui.data;
+                        
+     //Get email and password
+     var tempUser = data.email;
+     var password = hex_md5(data.password);
+                
+     if (tempUser.length > 0 && password.length > 0) {
+     var url = "./login?user=" + tempUser + "&password=" + hex_md5(password);
+                    
+     loadURL(url, function(data) {
+     var res = data;
+                        
+     if (res == "1") {
+       user = tempUser;
+       loadMySubs();
+	   $("#signinButton").hide();
+	   $("#signupButton").hide();
+	   $("#logoutButton").show();
+     }
+     else {
+       Ply.dialog("alert", "Invalid email or password")
+       .then((ui) => {
+       showLoginModal();
+     })
+       .catch((ui) => {
+     //Pressed cancel
+     });
+    }
+     });
+     }
+    })
+    .catch((ui) => {
+     //Pressed cancel
+   });
  }
-
-var showLoginModal = function()
-{
-    Ply.factory('login', function (options, data, resolve) {
-    options.flags = {
-      closeBtn: false,
-      closeByEsc: true,
-      closeByOverlay: true,
-      visibleOverlayInStack: true
-    };
-
-    options.onaction = function (ui) {
-      userData = ui.data;
-      console.log(ui.data);
-    };
-
-    // Use base factory
-    Ply.factory.use('base', options, {
-      title: 'Login',
-      form: {
-        email: 'Username',
-        password: { hint: 'Password', type: 'password' }
-      },
-      ok: 'Enter',
-	  newUser: 'Sign Up',
-      cancel: false
-    }, resolve);
-  });
-  Ply.dialog('login').done(function (ui) {
-    Ply.dialog('alert', 'Bingo!');
-	loadMySubs();
-  });
-  
-}
-
+ var showSignUp = function() {
+   Ply.dialog("prompt", {
+     title: "Sign Up",
+     form: {
+       email: "Email",
+       password: {hint: "Password", type: "password"}
+     }
+   })
+     .then((ui) => {
+       var data = ui.data;
+                    
+       //Get email and password
+       var tempUser = data.email;
+       var password = hex_md5(data.password);
+	   console.log(data);
+                
+       if (tempUser.length > 0 && password.length > 0) {
+         var url = "./createUser?user=" + tempUser + "&password=" + password;
+         loadURL(url, function(data) {
+           var res = data;
+                        
+           if (res == "1") {
+             user = tempUser;
+	         loadMySubs();
+	  	   $("#signinButton").hide();
+	  	   $("#signupButton").hide();
+	  	   $("#logoutButton").show();
+           }
+           else {
+             Ply.dialog("alert", "Email already in use")
+               .then((ui) => {
+                 showSignUp();
+               })
+               .catch((ui) => {
+                 //Pressed cancel
+               });
+           }
+         });
+       }
+     })
+     .catch((ui) => {
+      //Pressed cancel
+     });
+ }
+ 
 var allSubs = null;
 var postObjList = null;
 var debug = null;
@@ -108,8 +167,23 @@ var aSubSelected = function(index){
   });
 }
 
+function backToMyFeeds(){
+      if(ENV.screen.small){
+        $("#currFeedWrapper, #selFeedWrapper").fadeOut();
+        $("#myFeedWrapper").fadeIn();
+      }
+}
+
+function backToCurrFeeds()
+{
+      if(ENV.screen.small){
+        $("#myFeedWrapper, #selFeedWrapper").fadeOut();
+        $("#currFeedWrapper").fadeIn();
+      }
+}
+
 var aPostSelected = function(index){
-  var list = document.getElementById("currFeedWrapper").getElementsByClassName("listItem")
+	var list = document.getElementById("currFeedWrapper").getElementsByClassName("listItem");
   for(var i = 0; i < list.length; i++){
     if(i == index){
       list[i].style.color = "#77b55a";
@@ -128,10 +202,14 @@ var aPostSelected = function(index){
   var price = postObj["im:price"].label;
   if(price.toLowerCase() === "get") price = "$0.00";
   markUp += "<i style='color:#FFFFFF; font-family:verdana, sans-serif;'>" + price  + "</i>";
-
-  document.getElementById("selFeedWrapper").innerHTML = markUp;
+ document.getElementById("currFeedWrapper").innerHTML = 
+  "<a href='javascript:backToMyFeeds()' class='backButton'> Back </a>" + markUp;
+   if(ENV.screen.small){
+     $("#myFeedWrapper, #selFeedWrapper").fadeOut();
+     $("#currFeedWrapper").fadeIn();
+   }
+   AI.hide();
 }
-
 var reject = function()
 {
    $.reject({  
@@ -140,13 +218,14 @@ var reject = function()
         }  
     });
 }
-
 var startUp = function(){
+   $("#signinButton").show();
+   $("#signupButton").show();
+   $("#logoutButton").hide();
   showLoginModal();
   connect();
   reject();
 }
-
 var addFeed = function()
 {
   var link = prompt("Add New Feed URL (json)");
@@ -159,10 +238,9 @@ var addFeed = function()
     loadMySubs();
   });
 }
-
 var loadMySubs = function()
 {
-  var url = "./listSubs?user=" + userData.email;
+  var url = "./listSubs?user=" + user;
   loadURL(url, function(data){
     var mySubs = JSON.parse(data);
     allSubs = mySubs;
@@ -176,6 +254,10 @@ var loadMySubs = function()
         markUp += "<a href='javascript:aSubSelected(" + i + ")' class='listItem'>" + aFeed.id + " : " + aFeed.link +" </a>";
       }
       document.getElementById("myFeedList").innerHTML = markUp;
+      if(ENV.screen.small){
+        $("#currFeedWrapper, #selFeedWrapper").fadeOut();
+        $("#myFeedWrapper").fadeIn();
+      }
     }
   });
 
@@ -223,9 +305,21 @@ var logOut = function()
   #logoutButton{
 	 position: absolute;
 	 bottom: 5%;
-	 right:50%;
+	 left: 3%;
 	 
   }
+  #signinButton{
+	 position: absolute;
+	 bottom: 5%;
+	 left: 15%;
+	 
+  }
+  #signupButton{
+	 position: absolute;
+	 bottom: 5%;
+	 left: 3%; 
+  }
+  
   .myButton {
   	-moz-box-shadow: 0px 6px 14px -7px #3e7327;
   	-webkit-box-shadow: 0px 6px 14px -7px #3e7327;
@@ -252,37 +346,41 @@ var logOut = function()
   	text-decoration:none;
   	text-shadow:0px 1px 0px #5b8a3c;
   }
-  .myButton:hover {
-  	background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #72b352), color-stop(1, #77b55a));
-  	background:-moz-linear-gradient(top, #72b352 5%, #77b55a 100%);
-  	background:-webkit-linear-gradient(top, #72b352 5%, #77b55a 100%);
-  	background:-o-linear-gradient(top, #72b352 5%, #77b55a 100%);
-  	background:-ms-linear-gradient(top, #72b352 5%, #77b55a 100%);
-  	background:linear-gradient(to bottom, #72b352 5%, #77b55a 100%);
-  	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#72b352', endColorstr='#77b55a',GradientType=0);
-  	background-color:#72b352;
+  
+  .bigScreen #myFeedWrapper, .bigScreen #currFeedWrapper{
+    width: 25%;
   }
-  .myButton:active {
-  	position:relative;
-  	top:1px;
+
+  .smallScreen #myFeedWrapper, .smallScreen #currFeedWrapper{
+    width: 100%;
+    position: absolute;
   }
+  .smallScreen #selFeedWrapper{
+    width: 100%;
+    position: absolute;
+  }
+ 
   </style>
 </head>
 
 <body onload='startUp()'> 
   <div id='myFeedWrapper'>
     <h1 style="text-shadow:1px 1px 1px rgba(0,0,0,1); font-weight:normal; color:#FFFFFF; font-size:36px; font-family:verdana, sans-serif;"> My Feeds </h1>
-    <a href='javascript:addFeed()' class="myButton">Add New</a>
-	<a href='javascript:logOut()' id='logoutButton' class="myButton">Log Out</a>
-    <div id='myFeedList'> </div>
-  </div>
-  <div id='currFeedWrapper'>
-    <h1> </h1>
-    <div id='currFeedList'> </div>
- </div>
-  <div id='selFeedWrapper'> 
-    <h1> </h1>
-    <div id='feedDetails'> </div>
-  </div>
+       <a href='javascript:addFeed()' class="myButton"> Add New </a>
+       <div id='myFeedList'> </div>
+     </div>
+     <div id='currFeedWrapper'>
+    
+       <h1> </h1>
+       <div id='currFeedList'> </div>
+    </div>
+     <div id='selFeedWrapper'> 
+       <a href='javascript:backToCurrFeeds()' class='backButton'> Back </a>
+       <h1> </h1>
+       <div id='feedDetails'> </div>
+     </div>
+	<a href='javascript:logOut()' id='logoutButton' class="myButton">Log Out</a></div>
+	<a href='javascript:showSignUp()' id='signupButton' class="myButton">Sign Up</a>
+	<a href='javascript:showLoginModal()' id='signinButton' class="myButton">Sign In</a>
 </body>
 </html>

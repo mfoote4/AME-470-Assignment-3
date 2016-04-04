@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FeedReader</title>
+   <script src="scripts/script.js"></script>
+   <script src="scripts/jquery-2.2.1.min.js"></script>
+   <script src="scripts/jquery.reject.js"></script>
+   <script src="scripts/Ply.js"></script>
+   <script src="scripts/offline.min.js"></script>
+   <script src='scripts/offline-simulate-ui.min.js'> </script>
+   <script src="scripts/moment.js"></script>
+   <script src="scripts/moment-with-locales.js"></script>
+   <script src='scripts/md5.js'> </script>
+   <script src='scripts/uaSpoofing.js'> </script>
+
+  <link rel="stylesheet" href="css/ply.css" type="text/css" />
+  <link rel="stylesheet" href="css/jquery.reject.css" type="text/css" />
+  <link rel="stylesheet" href="css/offline-theme-slide.css" type="text/css" />
+  <link rel="stylesheet" href="css/offline-language-english.css" type="text/css" />
+  <link rel="shortcut icon" href="icon/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="icon/favicon.ico" type="image/x-icon">
+
+<script>
+var user = "";
+var allSubs = null;
+var allPosts = null; 
+var aFeed; 
+var currentScreen = null; 
+var AI = {
+  show: function(){
+    var mu = "<div class='acInd fadeBox'>"+
+      '<div class="theSpinner"> </div>' +
+      "</div>";
+    document.body.innerHTML += mu;
+  },
+  hide:function(){
+    $(".acInd").remove();
+  }
+}
+var browserReject = function()
+{
+  //will reject msie <= 8 
+   $.reject({  
+          reject: { 
+            //for testing purposes
+            //safari: true, // Apple Safari  
+            //chrome: true, // Google Chrome  
+            //firefox: true, // Mozilla Firefox  
+            msie: 8, // Microsoft Internet Explorer  
+            opera: true, // Opera  
+            konqueror: true, // Konqueror (Linux)  
+            unknown: true // Everything else  
+          }  
+    }); // Customized Browsers  
+}
+var testConnectivity = function()
+{
+ $(function(){
+        var 
+            $online = $('.online'),
+            $offline = $('.offline');
+        Offline.on('confirmed-down', function () {
+            $online.fadeOut(function () {
+                $offline.fadeIn();
+            });
+        });
+        Offline.on('confirmed-up', function () {
+            $offline.fadeOut(function () {
+                $online.fadeIn();
+            });
+        });
+    });
+}
+var showLoginModal = function()
+{
+   Ply.dialog("prompt", {
+      title: "Login",
+      form: {
+        email: "Email",
+        password: {hint: "Password", type: "password"}
+      }
+  })
+    .then((ui) => {
+    var data = ui.data;
+                        
+    //Get email and password
+    var tempUser = data.email;
+    var password = data.password;
+                
+    if (tempUser.length > 0 && password.length > 0) {
+    var url = "./login?user=" + tempUser + "&password=" + password;
+                    
+    loadURL(url, function(data) {
+    var res = data;
+                        
+    if (res == "1") {
+      user = tempUser;
+      login();
+    }
+    else {
+      Ply.dialog("alert", "Invalid email or password")
+      .then((ui) => {
+      showLoginModal();
+    })
+      .catch((ui) => {
+    //Pressed cancel
+    });
+   }
+    });
+    }
+   })
+   .catch((ui) => {
+    //Pressed cancel
+  });
+}
+var showSignUp = function() {
+  Ply.dialog("prompt", {
+    title: "Sign Up",
+    form: {
+      email: "Email",
+      password: {hint: "Password", type: "password"}
+    }
+  })
+    .then((ui) => {
+      var data = ui.data;
+                    
+      //Get email and password
+      var tempUser = data.email;
+      var password = hex_md5(data.password);
+                
+      if (tempUser.length > 0 && password.length > 0) {
+        var url = "./createUser?user=" + tempUser + "&password=" + password;
+        loadURL(url, function(data) {
+          var res = data;
+                        
+          if (res == "1") {
+            user = tempUser;
+            login();
+          }
+          else {
+            Ply.dialog("alert", "Email already in use")
+              .then((ui) => {
+                showSignUp();
+              })
+              .catch((ui) => {
+                //Pressed cancel
+              });
+          }
+        });
+      }
+    })
+    .catch((ui) => {
+     //Pressed cancel
+    });
+}
+var login = function() {
+  if (user != null) {
+    document.getElementById("addButton").style.visibility = "visible";
+    //Display user in top right corner
+    document.getElementById("username").innerHTML = "Hello, " + user;
+                
+    //Change login button to logout
+    document.getElementById("loginButton").innerHTML = "Logout";
+    document.getElementById("loginButton").href = "javascript:logout()";
+                
+    //Hide sign up button
+    document.getElementById("signUpButton").style.visibility = "hidden";
+                
+    loadMySubs();
+  }
+}
+    
+var logout = function() {
+  //Clear out user
+  user = null;
+  //document.getElementById("username").innerHTML = "";
+            
+  //Change logout button to login
+  document.getElementById("loginButton").innerHTML = "Login";
+  document.getElementById("loginButton").href = "javascript:showLoginModal()";
+            
+  //Show sign up button
+  //document.getElementById("signUpButton").style.visibility = "visible";
+            
+  //Hide add button and feed list
+  location.reload(); 
+  loadMySubs(); //no feeds to open
+}
+var aSubSelected = function(index){
+  currentScreen = 2;
+  if(ENV.screen.small){
+  document.getElementById("back").style.visibility = "visible" 
+}
+  document.getElementById("selFeedWrapper").innerHTML = "";
+  //document.getElementById("currFeedWrapper").innerHTML = "";
+  var list = document.getElementById("myFeedList").getElementsByClassName("listItem")
+  for(var i = 0; i < list.length; i++){
+    if(i == index){
+      list[i].style.color = "#ADD8E6";
+      list[i].style.backgroundColor= "white";
+    }
+    else{
+      list[i].style.color = "";
+      list[i].style.backgroundColor= "";
+    }
+  }
+  var link = allSubs[index].link;
+  var url = "./getAllPosts?link=" + link;
+  loadURL(url, function(data){
+    var title = JSON.parse(data).feed.title.label;
+    postObjList = JSON.parse(data).feed.entry;
+    //title.style.color = "#ADD8E6";
+    var markUp = "<h1 style='color:#ADD8E6;' border-radius='25px' border='2px solid #73AD21' padding= '20px'  font face='verdana' align='center' > " + title + "</h1>";
+    //title.style.color = "#ADD8E6";
+    for (var i = 0; i < postObjList.length; i++){
+        var aPost = postObjList[i];
+        markUp += "<a href='javascript:aPostSelected(" + i + ")' class='listItem' >" + aPost.title.label +" </a>";
+    }
+    document.getElementById("currFeedWrapper").innerHTML = markUp;
+    "<a href='javascript:backToMyFeeds()' class='backButton'> Back </a>" + markUp;
+    if(ENV.screen.small){
+      $("#myFeedWrapper, #selFeedWrapper").fadeOut();
+      $("#currFeedWrapper").fadeIn();
+    }
+      AI.hide();
+  });
+}
+var aPostSelected = function(index){
+  currentScreen = 3; 
+  if(ENV.screen.small){
+  document.getElementById("back").style.visibility = "visible" 
+}
+  var list = document.getElementById("currFeedWrapper").getElementsByClassName("listItem")
+  for(var i = 0; i < list.length; i++){
+    if(i == index){
+      list[i].style.color = "#ADD8E6";
+      list[i].style.backgroundColor= "white";
+    }
+    else{
+      list[i].style.color = "";
+      list[i].style.backgroundColor= "";
+    }
+  }
+  var postObj = postObjList[index]
+  var markUp = "";
+  markUp += "<h1 style='color:#ADD8E6;' font face='verdana' align= 'center'>" + postObj.title.label + "<br><img  src='" + postObj["im:image"][0].label + " ' align='baseline'>" + "</h1>";
+  //(postObj.title.label).style.color = "#ADD8E6";
+   var price = postObj["im:price"].label;
+  if(price.toLowerCase() === "get") price = " $0.00";
+  markUp += "<h2 align= 'center' style='color:#ADD8E6;' font face='verdana'>" + postObj["im:artist"].label;
+  markUp += " <i align= 'center' style='color:#ADD8E6;' font face='verdana'>" + price  + " </i>" + "</h1>";
+  document.getElementById("selFeedWrapper").innerHTML = markUp;
+   "<a href='javascript:backToCurrFeeds()' class='backButton'> Back </a>"+  markUp;
+   if(ENV.screen.small){
+    $("#myFeedWrapper, #currFeedWrapper").fadeOut();
+    $("#selFeedWrapper").fadeIn();
+  }
+    AI.hide();
+}
+var startUp = function(){
+  document.getElementById("addButton").style.visibility = "hidden";
+  document.getElementById("myFeedList").innerHTML = "Login or sign up to view your feeds!";
+  document.getElementById("back").style.visibility = "hidden";
+  spoofUserAgent();
+  browserReject(); 
+  testConnectivity();
+}
+var addFeed = function(){
+  var linkPrompt = prompt("Please enter the link of the subsciption you want to input: ");
+  if(linkPrompt == null)
+  {
+     return; 
+  }
+  else
+  {
+    var date = moment().format('L');
+    var url = "./addOrEditSub?id= " + allSubs.length + "&link=" + linkPrompt + "&date=" + date + "&user=" + user;
+      loadURL(url, function(data){
+         loadMySubs(); 
+         document.getElementById("currFeedWrapper").innerHTML = "";
+      }); 
+  }
+  //http://localhost:8080/addOrEditSub?id=0&link=url&date=0&user=test
+}
+var loadMySubs = function()
+{
+  currentScreen == 1; 
+  var url = "./listSubs?user=" + user;
+  loadURL(url, function(data){
+    var mySubs = JSON.parse(data);
+    allSubs = mySubs;
+    if(mySubs.length == 0){
+      document.getElementById("myFeedList").innerHTML = "No subsciptions" 
+    }
+    else{
+      var markUp = "";
+      for (var i = 0; i < mySubs.length; i++){
+        var aFeed = mySubs[i];
+        var date = moment().format('L');
+        markUp += "<a href='javascript:aSubSelected(" + i + ")' class='listItem'>" + aFeed.id + " : " + aFeed.link + " (" + date + ")" +  "</a>";
+      }
+      document.getElementById("myFeedList").innerHTML = markUp;
+       if(ENV.screen.small){
+        $("#currFeedWrapper, #selFeedWrapper").fadeOut();
+        $("#myFeedWrapper").fadeIn();
+       }
+    }
+  });
+}
+function back(){
+  console.log("Current Screen: " + currentScreen);
+  if(currentScreen == 2){
+    $("#currFeedWrapper, #selFeedWrapper").fadeOut();
+    $("#myFeedWrapper").fadeIn();
+    currentScreen--;
+  }
+  else if(currentScreen == 3){
+    $("#myFeedWrapper, #selFeedWrapper").fadeOut();
+    $("#currFeedWrapper").fadeIn(); 
+    currentScreen--; 
+  }
+}
+  </script>
+  <style>
+  p{
+      text-align: center;
+  }
+  body{
+    margin: 0px;
+  }
+  a:link {
+    text-decoration: none; 
+    color: white;
+  }
+  a:hover {
+    text-decoration: underline; 
+    color: white;
+  }
+  .smallScreen #myFeedWrapper, .bigScreen #currFeedWrapper{
+    width: 100%;
+  }
+  .bigScreen #myFeedWrapper, .smallScreen #currFeedWrapper{
+    width: 100%;
+  }
+  .smallScreen #selFeedWrapper{
+    width: 100%;
+  }
+  .bigScreen #selFeedWrapper{
+    width: 100%;
+  }
+  #myFeedWrapper, #currFeedWrapper a{
+    display: inline-block;
+    vertical-align: top;
+    text-align:center;
+    text-decoration: none;
+    background: #ADD8E6;
+    word-wrap: normal;
+    height: 100%;
+    width: 100%;
+  }
+  .listItem{
+    display: block;
+    padding: 5px;
+    white-space: word-wrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+.bigScreen .backButton {
+  display: none;
+    padding: 5px;
+    background-color: #ADD8E6;
+    color: #ADD8E6;
+    border: 1px solid;
+    border-radius: 5px;
+    border-color: #ADD8E6;
+    text-decoration: none;
+    font-family: verdana;
+  }
+  .button {
+    padding: 5px;
+    background-color: #ADD8E6;
+    color: #ADD8E6;
+    border: 1px solid;
+    border-radius: 5px;
+    border-color: #ADD8E6;
+    text-decoration: none;
+    font-family: verdana;
+  }
+#loginBar {
+  height: 15px;
+  padding: 10px;
+  background-color: #ADD8E6;
+  border: 1px solid;
+  border-color: #ADD8E6;
+}
+.center {
+    margin: auto;
+    border: 3px solid #ADD8E6;
+    padding: 10px;
+    background-color: white;
+    border-radius: 50%;
+    box-shadow: 0px 0px 2px; 
+}
+  </style>
+</head>
+
+<body onload='startUp()'> 
+   <div id="loginBar">
+        <div style="float: right;"><a id="loginButton" href="javascript:showLoginModal()" class="button">Login</a></div>
+        <div style="float: right;"><a id="signUpButton"  href="javascript:showSignUp()" class="button" >Sign Up</a></div>
+        <div style="float: left;"><a id="back" href="javascript:back()" class="button" > Back</a></div>
+        <div style="float: left;"><a id="username"  href="javascript:showSignUp()" class="button" ></a></div>
+    </div>
+  <div id='myFeedWrapper'>
+    <h1 style="color:white; text-decoration: underline; horizontal-align:center;" <p><font face="verdana"</p> My Feeds </h1>
+    <a id="addButton" href='javascript:addFeed()' hover="color:white; text-decoration: underline;" style="color:#ADD8E6; line-height:300%;" class="center" > Add New </a>
+    <div style="color:white;" font face= "verdana" id='myFeedList'> </div>
+  </div>
+  <div id='currFeedWrapper'>
+    <h1> </h1>
+    <div id='currFeedList'  > </div>
+ </div>
+  <div id='selFeedWrapper'> 
+    <h1> </h1>
+    <div id='feedDetails' style="color:#ADD8E6;" font face= "verdana">  </div>
+     <a href='javascript:backToMyFeeds()' class= 'backButton'> Back </a>
+  </div>
+</body>
+</html>
