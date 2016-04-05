@@ -4,12 +4,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title> Simple JS Eval</title>
-  <script src='script.js'> </script>
-  <script src='md5.js'> </script>
-  <script src='jquery-2.2.1.min.js'> </script>
-  <script src='ply.js'> </script>
-  <link rel="stylesheet" type="text/css" href="ply.css">
-  <script src='uaSpoofing.js'> </script>
+    <script src="scripts/jquery-2.2.1.min.js"></script>
+    <script src="scripts/jquery.reject.js"></script>
+    <script src="scripts/Ply.js"></script>
+    <script src="scripts/offline.min.js"></script>
+    <script src="scripts/moment.js"></script>
+    <script src="scripts/moment-with-locales.js"></script>
+    <script src="scripts/script.js"></script>
+    <script src="scripts/md5.js"></script>
+    <script src='scripts/uaSpoofing.js'> </script>
+  	<link rel="stylesheet" href="css/ply.css" type="text/css" />
+  	<link rel="stylesheet" href="css/jquery.reject.css" type="text/css" />
+  	<link rel="stylesheet" href="css/offline-theme-default.css" type="text/css" />
+  	<link rel="stylesheet" href="css/offline-language-english.css" type="text/css" />
   <script>
 
 var AI = {
@@ -134,8 +141,8 @@ var aPostSelected = function(index){
   document.getElementById("selFeedWrapper").innerHTML =
    "<a href='javascript:backToCurrFeeds()' class='backButton'> Back </a>"+  markUp;
       if(ENV.screen.small){
-        $("#myFeedWrapper, #currFeedWrapper").fadeOut();
-        $("#selFeedWrapper").fadeIn();
+        $("#myFeedWrapper, #selFeedWrapper").fadeOut();
+        $("#currFeedWrapper").fadeIn();
       }
       AI.hide();
 }
@@ -167,7 +174,7 @@ var loadMySubs = function()
     var mySubs = JSON.parse(data);
     allSubs = mySubs;
     if(mySubs.length == 0){
-      document.getElementById("myFeedList").innerHTML = "No subsciptions" 
+		document.getElementById("myFeedList").innerHTML = "No subsciptions";
     }
     else{
       var markUp = "";
@@ -199,7 +206,7 @@ var loadMySubs = function()
   .smallScreen #myFeedWrapper, .smallScreen #currFeedWrapper{
     width: 100%;
     position: absolute;
-  }
+  }	
   .smallScreen #selFeedWrapper{
     width: 100%;
     position: absolute;
@@ -252,7 +259,6 @@ var loadMySubs = function()
     <div id='myFeedList'> </div>
   </div>
   <div id='currFeedWrapper'>
-    
     <h1> </h1>
     <div id='currFeedList'> </div>
  </div>

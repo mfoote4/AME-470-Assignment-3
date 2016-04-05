@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	
   <title>RSSFeed Reader</title>
     <script src="scripts/jquery-2.2.1.min.js"></script>
     <script src="scripts/jquery.reject.js"></script>
@@ -9,6 +11,7 @@
     <script src="scripts/moment.js"></script>
     <script src="scripts/moment-with-locales.js"></script>
     <script src="scripts/script.js"></script>
+    <script src="scripts/md5.js"></script>
     <script src='scripts/uaSpoofing.js'> </script>
   	<link rel="stylesheet" href="css/ply.css" type="text/css" />
   	<link rel="stylesheet" href="css/jquery.reject.css" type="text/css" />
@@ -92,6 +95,7 @@
      //Pressed cancel
    });
  }
+ 
  var showSignUp = function() {
    Ply.dialog("prompt", {
      title: "Sign Up",
@@ -109,7 +113,7 @@
 	   console.log(data);
                 
        if (tempUser.length > 0 && password.length > 0) {
-         var url = "./createUser?user=" + tempUser + "&password=" + password;
+         var url = "./createUser?user=" + tempUser + "&password=" + hex_md5(password);
          loadURL(url, function(data) {
            var res = data;
                         
@@ -163,8 +167,14 @@ var aSubSelected = function(index){
         var aPost = postObjList[i];
         markUp += "<a href='javascript:aPostSelected(" + i + ")' class='listItem'>" + aPost.title.label +" </a>";
     }
-    document.getElementById("currFeedWrapper").innerHTML = markUp;
-  });
+   document.getElementById("currFeedWrapper").innerHTML = 
+    "<a href='javascript:backToMyFeeds()' class='backButton'> Back </a>" + markUp;
+     if(ENV.screen.small){
+       $("#myFeedWrapper, #selFeedWrapper").fadeOut();
+       $("#currFeedWrapper").fadeIn();
+     }
+     AI.hide();
+ });
 }
 
 function backToMyFeeds(){
@@ -183,10 +193,11 @@ function backToCurrFeeds()
 }
 
 var aPostSelected = function(index){
-	var list = document.getElementById("currFeedWrapper").getElementsByClassName("listItem");
+   AI.show();
+  var list = document.getElementById("currFeedWrapper").getElementsByClassName("listItem")
   for(var i = 0; i < list.length; i++){
     if(i == index){
-      list[i].style.color = "#77b55a";
+      list[i].style.color = "red";
       list[i].style.backgroundColor= "white";
     }
     else{
@@ -196,19 +207,20 @@ var aPostSelected = function(index){
   }
   var postObj = postObjList[index]
   var markUp = "";
-  markUp += "<h1 style='text-shadow:1px 1px 1px rgba(0,0,0,1); font-weight:normal; color:#FFFFFF; font-size:36px; font-family:verdana, sans-serif;'>" + postObj.title.label + "</h1>";
-  markUp += "<h2 style='text-shadow:1px 1px 1px rgba(0,0,0,1); font-weight:normal; color:#FFFFFF; font-family:verdana, sans-serif;'>" + postObj["im:artist"].label + "</h1>";
-  markUp += "<img src='" + postObj["im:image"][0].label + "'></br></br>"
+  markUp += "<h1>" + postObj.title.label + "</h1>";
+  markUp += "<h2>" + postObj["im:artist"].label + "</h1>";
+  markUp += "<img src='" + postObj["im:image"][0].label + "'>"
   var price = postObj["im:price"].label;
   if(price.toLowerCase() === "get") price = "$0.00";
-  markUp += "<i style='color:#FFFFFF; font-family:verdana, sans-serif;'>" + price  + "</i>";
- document.getElementById("currFeedWrapper").innerHTML = 
-  "<a href='javascript:backToMyFeeds()' class='backButton'> Back </a>" + markUp;
-   if(ENV.screen.small){
-     $("#myFeedWrapper, #selFeedWrapper").fadeOut();
-     $("#currFeedWrapper").fadeIn();
-   }
-   AI.hide();
+  markUp += "<i>" + price  + "</i>";
+
+  document.getElementById("selFeedWrapper").innerHTML =
+   "<a href='javascript:backToCurrFeeds()' class='backButton'> Back </a>"+  markUp;
+      if(ENV.screen.small){
+        $("#myFeedWrapper, #selFeedWrapper").fadeOut();
+        $("#currFeedWrapper").fadeIn();
+      }
+      AI.hide();
 }
 var reject = function()
 {
@@ -219,12 +231,12 @@ var reject = function()
     });
 }
 var startUp = function(){
+   spoofUserAgent();
    $("#signinButton").show();
    $("#signupButton").show();
    $("#logoutButton").hide();
-  showLoginModal();
-  connect();
-  reject();
+   connect();
+   reject();
 }
 var addFeed = function()
 {
@@ -238,6 +250,7 @@ var addFeed = function()
     loadMySubs();
   });
 }
+
 var loadMySubs = function()
 {
   var url = "./listSubs?user=" + user;
@@ -245,7 +258,7 @@ var loadMySubs = function()
     var mySubs = JSON.parse(data);
     allSubs = mySubs;
     if(mySubs.length == 0){
-      document.getElementById("myFeedList").innerHTML = "No subsciptions" 
+		document.getElementById("myFeedList").innerHTML = "No subsciptions";
     }
     else{
       var markUp = "";
@@ -265,7 +278,7 @@ var loadMySubs = function()
 
 var logOut = function()
 {
-	userData.email = null;
+	location.reload();
 	showLoginModal();
 }
   </script>
@@ -279,20 +292,21 @@ var logOut = function()
   }
   #myFeedWrapper, #currFeedWrapper{
     display: inline-block;
-    width: 25%;
     vertical-align: top;
     background: #ddd;
     min-height: 100%;
   }
+  
   #selFeedWrapper{
     display: inline-block;
-    width: 48%;
     vertical-align: top;
     min-height: 100%;
   }
+  
   #myFeedList{
     margin-top: 10px;
   }
+  
   .listItem{
     display: block;
     padding: 5px;
@@ -350,6 +364,10 @@ var logOut = function()
   .bigScreen #myFeedWrapper, .bigScreen #currFeedWrapper{
     width: 25%;
   }
+  
+  .bigScreen #selFeedWrapper{
+    width: 48%;
+  }
 
   .smallScreen #myFeedWrapper, .smallScreen #currFeedWrapper{
     width: 100%;
@@ -360,6 +378,27 @@ var logOut = function()
     position: absolute;
   }
  
+  .smallScreen #signinButton{
+	 position: absolute;
+	 bottom: 5%;
+	 left: 35%;
+	 
+  }
+  
+  #backButton{
+  	
+  }
+  
+  .bigScreen #backButton{
+    display: none;
+  }
+
+  .fadeBox{
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    background-color: rgba(0,0,0,.4);
+  }
   </style>
 </head>
 
@@ -375,7 +414,7 @@ var logOut = function()
        <div id='currFeedList'> </div>
     </div>
      <div id='selFeedWrapper'> 
-       <a href='javascript:backToCurrFeeds()' class='backButton'> Back </a>
+       <a href='javascript:backToCurrFeeds()' id='backButton' class="myButton"> Back </a>
        <h1> </h1>
        <div id='feedDetails'> </div>
      </div>
